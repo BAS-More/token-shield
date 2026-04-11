@@ -1,0 +1,37 @@
+{
+  "name": "token-shield",
+  "version": "1.0.0",
+  "description": "3-layer automatic token optimization for Claude Code. Saves 80-95% of token costs via context sandboxing, auto-handoff, and session continuity.",
+  "main": "hooks/token-shield-validator.js",
+  "bin": {
+    "token-shield": "./bin/install.js"
+  },
+  "scripts": {
+    "validate": "node scripts/validate.js",
+    "gap-analysis": "node scripts/gap-analysis.js",
+    "install-hooks": "node bin/install.js",
+    "test": "node scripts/validate.js"
+  },
+  "keywords": [
+    "claude-code",
+    "token-optimization",
+    "context-management",
+    "mcp",
+    "hooks",
+    "session-management",
+    "auto-handoff"
+  ],
+  "author": "BAS-More",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BAS-More/token-shield.git"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "dependencies": {},
+  "peerDependencies": {
+    "context-mode": ">=1.0.0"
+  }
+}
