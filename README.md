@@ -84,14 +84,23 @@ The same hook also runs on `SessionStart`:
 
 ```
 token-shield/
-  bin/install.js                 — Cross-platform installer
-  hooks/token-shield-validator.js — Unified hook (SessionStart + Stop)
-  scripts/validate.js            — Validation script
-  scripts/gap-analysis.js        — Gap analysis utility
-  commands/token-shield.md       — Slash command (EZRA-compatible)
-  legacy/                        — Original PowerShell scripts (reference)
-  docs/                          — Architecture, patterns, templates
+  bin/install.js                   — Installer shim (→ src/install.js)
+  hooks/token-shield-validator.js  — Unified hook (SessionStart + Stop). Self-contained: deploy artifact.
+  scripts/validate.js              — Validation shim (→ src/validate.js)
+  scripts/gap-analysis.js          — Gap-analysis shim (→ src/gap-analysis.js)
+  src/                             — All logic. Importable. See ARCHITECTURE.md.
+    ├── install.js                 installer entry + main()
+    ├── validate.js                validator entry + main()
+    ├── gap-analysis.js            gap-report entry (accepts --cwd, --claude-md)
+    ├── index.js                   public API re-exports
+    └── lib/                       reusable helpers (paths, fs, settings, mcp, handoff, logger)
+  test/                            — node:test suites, zero deps
+  commands/token-shield.md         — Slash command (EZRA-compatible)
+  docs/                            — Long-form architecture, patterns, templates
 ```
+
+Previous v0 PowerShell scripts are preserved at the `v0-powershell-legacy`
+git tag.
 
 ### Installed files
 
@@ -105,7 +114,7 @@ token-shield/
 ## Compatibility
 
 - **Platforms**: Windows, macOS, Linux
-- **Node.js**: 16+
+- **Node.js**: 18+ (20 LTS recommended; pinned in `.nvmrc`)
 - **Claude Code**: Any version with hook support
 - **EZRA**: Compatible — ships as EZRA hook + command too
 - **Other hooks**: Non-interfering — preserves all existing hooks

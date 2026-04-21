@@ -1,27 +1,8 @@
 #!/usr/bin/env node
 
-/**
- * Token Shield Validator — Cross-platform session management hook
- *
- * Unified Node.js hook that replaces context-guardian.ps1 + session-autoload.ps1 +
- * validate-token-shield.js. Ships with EZRA and deploys to ~/.claude/hooks/ on install.
- *
- * Handles two hook stages:
- *   - SessionStart: Announces available handoff files, runs validation
- *   - Stop: Checks transcript size, generates auto-handoff when over threshold
- *
- * Install: EZRA auto-deploys via bin/cli.js. Add to settings.json:
- *   SessionStart: { "type": "command", "command": "node ~/.claude/hooks/token-shield-validator.js", "timeout": 5 }
- *   Stop:         { "type": "command", "command": "node ~/.claude/hooks/token-shield-validator.js", "timeout": 5 }
- *
- * Protocol: Reads JSON from stdin, outputs JSON/text to stdout, exits 0.
- */
-
-'use strict';
-
-const fs = require('fs');
-const path = require('path');
-const os = require('os');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
 
 const MAX_STDIN = 1024 * 1024;
 const THRESHOLD_KB = 2048; // ~300K tokens
@@ -30,19 +11,25 @@ const HANDOFF_MAX_AGE_HOURS = 24;
 // ─── Hook logger (optional, fail-open) ──────────────────────────
 
 let _log;
-try { _log = require('./ezra-hook-logger').logHookEvent; } catch { _log = () => {}; }
+try {
+  _log = require('./ezra-hook-logger').logHookEvent;
+} catch {
+  _log = () => {};
+}
 
 // ─── Stdin reader (Claude Code hook protocol) ───────────────────
 
 let stdinData = '';
 process.stdin.setEncoding('utf8');
-process.stdin.on('data', chunk => {
+process.stdin.on('data', (chunk) => {
   stdinData += chunk;
   if (stdinData.length > MAX_STDIN) process.exit(0);
 });
 process.stdin.on('end', () => {
   let event = {};
-  try { event = JSON.parse(stdinData); } catch (_) {}
+  try {
+    event = JSON.parse(stdinData);
+  } catch (_) {}
   run(event);
 });
 
@@ -85,7 +72,9 @@ function handleSessionStart(event) {
     if (handoff) {
       const ageH = ((Date.now() - handoff.mtime) / 3600000).toFixed(1);
       const sizeKB = (handoff.size / 1024).toFixed(1);
-      lines.push(`[Token Shield] Handoff available from ${ageH}h ago: ${handoff.path} (${sizeKB}KB)`);
+      lines.push(
+        `[Token Shield] Handoff available from ${ageH}h ago: ${handoff.path} (${sizeKB}KB)`
+      );
     }
   }
 
@@ -163,7 +152,7 @@ Start a new Claude Code session and say:
 
   const result = JSON.stringify({
     result: 'warn',
-    message: `[Token Shield] Transcript at ${sizeKB}KB (~${pct}% of comfortable limit). Handoff saved. Consider starting a fresh session.`
+    message: `[Token Shield] Transcript at ${sizeKB}KB (~${pct}% of comfortable limit). Handoff saved. Consider starting a fresh session.`,
   });
 
   console.log(result);
@@ -195,7 +184,7 @@ function runValidation() {
   if (fs.existsSync(settingsPath)) {
     try {
       const raw = fs.readFileSync(settingsPath, 'utf8');
-      if (raw.charCodeAt(0) === 0xFEFF) {
+      if (raw.charCodeAt(0) === 0xfeff) {
         failures.push('settings.json has BOM character');
       }
       JSON.parse(raw.replace(/^\uFEFF/, ''));
@@ -216,15 +205,19 @@ function findProjectMemory(cwd) {
   const cwdNorm = cwd.replace(/\\/g, '/').replace(/\/$/, '').toLowerCase();
 
   try {
-    const dirs = fs.readdirSync(projectsBase, { withFileTypes: true })
-      .filter(d => d.isDirectory());
+    const dirs = fs
+      .readdirSync(projectsBase, { withFileTypes: true })
+      .filter((d) => d.isDirectory());
 
     // Score all candidates, pick the most specific match (highest matchScore)
     let bestMatch = null;
     let bestScore = 0;
 
     for (const dir of dirs) {
-      const slugParts = dir.name.toLowerCase().split('-').filter(p => p.length >= 2);
+      const slugParts = dir.name
+        .toLowerCase()
+        .split('-')
+        .filter((p) => p.length >= 2);
       let matchScore = 0;
       for (const part of slugParts) {
         if (cwdNorm.includes(part)) matchScore++;
@@ -245,24 +238,30 @@ function findProjectMemory(cwd) {
 }
 
 function createProjectMemory(cwd) {
-  const slug = cwd.replace(/[:\\/]/g, '-').replace(/^-+/, '').replace(/-+$/, '');
+  const slug = cwd
+    .replace(/[:\\/]/g, '-')
+    .replace(/^-+/, '')
+    .replace(/-+$/, '');
   const memDir = path.join(os.homedir(), '.claude', 'projects', slug, 'memory');
-  try { fs.mkdirSync(memDir, { recursive: true }); } catch (_) {}
+  try {
+    fs.mkdirSync(memDir, { recursive: true });
+  } catch (_) {}
   return memDir;
 }
 
 function findRecentHandoff(memDir) {
-  const cutoff = Date.now() - (HANDOFF_MAX_AGE_HOURS * 3600000);
+  const cutoff = Date.now() - HANDOFF_MAX_AGE_HOURS * 3600000;
 
   try {
-    const files = fs.readdirSync(memDir)
-      .filter(f => f.startsWith('session_handoff'))
-      .map(f => {
+    const files = fs
+      .readdirSync(memDir)
+      .filter((f) => f.startsWith('session_handoff'))
+      .map((f) => {
         const full = path.join(memDir, f);
         const stat = fs.statSync(full);
         return { path: full, mtime: stat.mtimeMs, size: stat.size };
       })
-      .filter(f => f.mtime > cutoff)
+      .filter((f) => f.mtime > cutoff)
       .sort((a, b) => b.mtime - a.mtime);
 
     return files[0] || null;

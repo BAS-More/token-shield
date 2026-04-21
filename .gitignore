@@ -3,3 +3,19 @@ node_modules/
 .DS_Store
 Thumbs.db
 .ezra/
+
+# Coverage & build output
+coverage/
+.nyc_output/
+dist/
+*.tsbuildinfo
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Backups created by saveSettings / saveMcp
+*.bak
+*.tmp

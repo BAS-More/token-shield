@@ -2,15 +2,31 @@
   "name": "token-shield",
   "version": "1.0.0",
   "description": "3-layer automatic token optimization for Claude Code. Saves 80-95% of token costs via context sandboxing, auto-handoff, and session continuity.",
-  "main": "hooks/token-shield-validator.js",
+  "main": "src/index.js",
   "bin": {
     "token-shield": "./bin/install.js"
   },
+  "files": [
+    "bin/",
+    "hooks/",
+    "scripts/",
+    "src/",
+    "commands/",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "ARCHITECTURE.md"
+  ],
   "scripts": {
+    "test": "node --test",
+    "test:watch": "node --test --watch",
     "validate": "node scripts/validate.js",
     "gap-analysis": "node scripts/gap-analysis.js",
     "install-hooks": "node bin/install.js",
-    "test": "node scripts/validate.js"
+    "install-hooks:dry": "node bin/install.js --dry-run --skip-npm",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "biome ci .",
+    "format": "biome format --write ."
   },
   "keywords": [
     "claude-code",
@@ -27,11 +43,18 @@
     "type": "git",
     "url": "https://github.com/BAS-More/token-shield.git"
   },
+  "bugs": {
+    "url": "https://github.com/BAS-More/token-shield/issues"
+  },
+  "homepage": "https://github.com/BAS-More/token-shield#readme",
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "dependencies": {},
   "peerDependencies": {
     "context-mode": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "context-mode": { "optional": true }
   }
 }
