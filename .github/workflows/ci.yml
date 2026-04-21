@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Install dev dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Unit tests
+        run: node --test
+
+      - name: Dry-run install (no side effects)
+        run: node bin/install.js --dry-run --skip-npm
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - run: npm install --no-save --no-audit --no-fund typescript@5 @types/node@20
+      - run: npx tsc --noEmit -p tsconfig.json
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+      - run: npm install --no-save --no-audit --no-fund @biomejs/biome@1.9.4
+      - run: npx biome ci .

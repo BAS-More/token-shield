@@ -1,0 +1,17 @@
+# npm uses the `files` allowlist in package.json — this file is a fallback.
+test/
+docs/
+.github/
+.ezra/
+legacy/
+coverage/
+.nyc_output/
+*.bak
+*.tmp
+biome.json
+tsconfig.json
+.nvmrc
+CHANGELOG.md
+CONTRIBUTING.md
+SECURITY.md
+ARCHITECTURE.md
