@@ -4,9 +4,21 @@
  */
 
 const fs = require('node:fs');
-const { HOOKS_DIR, MCP_JSON, SETTINGS_JSON, HOOK_TARGET } = require('./lib/paths');
+const { HOOKS_DIR, MCP_JSON, SETTINGS_JSON, HOOK_TARGET, CONTEXT_MODE_DB } = require('./lib/paths');
 const { loadMcp } = require('./lib/mcp-io');
 const { loadSettings, HOOK_MARKER } = require('./lib/settings-io');
+
+/** Plugin key L1 is registered under in settings.json `enabledPlugins`. */
+const CONTEXT_MODE_PLUGIN_KEY = 'context-mode@context-mode';
+
+/**
+ * Expand Windows-style %VAR% references so a configured DB path can be stat'd.
+ * @param {string} p
+ * @returns {string}
+ */
+function expandEnvPath(p) {
+  return p.replace(/%([^%]+)%/g, (whole, name) => process.env[name] ?? whole);
+}
 
 /**
  * @typedef {object} Check
@@ -43,6 +55,10 @@ function runValidation(options = {}) {
   out(` ${new Date().toISOString()}`);
   out('============================================\n');
 
+  // Settings are needed by BOTH Layer 1 (is the plugin actually enabled?) and Layer 3.
+  const { settings, existed: sExisted, invalid: sInvalid } = loadSettings(SETTINGS_JSON);
+  const settingsUsable = sExisted && !sInvalid;
+
   out('--- Layer 1: Context Mode MCP ---');
   const { mcp, existed: mcpExisted, invalid: mcpInvalid } = loadMcp(MCP_JSON);
   if (!mcpExisted) {
@@ -56,6 +72,47 @@ function runValidation(options = {}) {
       record(cm.env?.CONTEXT_MODE_DB ? 'pass' : 'fail', 'DB path configured');
       const cmd = typeof cm.command === 'string' ? cm.command : '';
       record(cmd && fs.existsSync(cmd) ? 'pass' : 'fail', `Binary exists: ${cmd || '(none)'}`);
+
+      // The three checks above test PRESENCE (config entry, path string, file on disk).
+      // All of them stay true when L1 is switched off, which is how this validator
+      // reported 10/10 green through 45+ days of L1 being disabled. The two checks
+      // below test whether L1 is actually OPERATING. They are warnings, not failures:
+      // retiring L1 is a legitimate choice, but it must never read as "all passed".
+      const enabledPlugins = /** @type {Record<string, unknown>} */ (
+        settings.enabledPlugins ?? {}
+      );
+      const enabled = settingsUsable
+        ? enabledPlugins[CONTEXT_MODE_PLUGIN_KEY] === true
+        : undefined;
+      if (enabled === undefined) {
+        record('warn', 'L1 plugin enabled — UNKNOWN (settings.json unreadable)');
+      } else {
+        record(
+          enabled ? 'pass' : 'warn',
+          enabled
+            ? `L1 plugin enabled (${CONTEXT_MODE_PLUGIN_KEY})`
+            : `L1 plugin DISABLED — enabledPlugins["${CONTEXT_MODE_PLUGIN_KEY}"] is false; tool output is NOT sandboxed`
+        );
+      }
+
+      const dbPath = cm.env?.CONTEXT_MODE_DB
+        ? expandEnvPath(String(cm.env.CONTEXT_MODE_DB))
+        : CONTEXT_MODE_DB;
+      let dbStat = null;
+      try {
+        dbStat = fs.statSync(dbPath);
+      } catch {
+        dbStat = null;
+      }
+      if (dbStat) {
+        const ageDays = Math.floor((Date.now() - dbStat.mtimeMs) / 86_400_000);
+        record(
+          ageDays <= 7 ? 'pass' : 'warn',
+          `L1 store last written ${ageDays}d ago (${dbPath})`
+        );
+      } else {
+        record('warn', `L1 store ABSENT — nothing at ${dbPath}; L1 has never written`);
+      }
     }
   }
   out('');
@@ -71,7 +128,6 @@ function runValidation(options = {}) {
   out('');
 
   out('--- Layer 3: Hook Wiring ---');
-  const { settings, existed: sExisted, invalid: sInvalid } = loadSettings(SETTINGS_JSON);
   if (!sExisted) {
     record('fail', 'settings.json exists');
   } else if (sInvalid) {
@@ -108,11 +164,18 @@ function runValidation(options = {}) {
   out('\n============================================');
   out(` RESULTS: ${passed} passed, ${failed} failed, ${warned} warnings`);
   out('============================================');
-  out(
-    failed === 0
-      ? '\n TOKEN SHIELD: ALL CHECKS PASSED'
-      : '\n ISSUES FOUND — run: node bin/install.js'
-  );
+  // A green headline must mean the shield is OPERATING, not merely installed.
+  // Warnings are L1-inactive signals: not build failures, but never "all passed".
+  if (failed > 0) {
+    out('\n ISSUES FOUND — run: node bin/install.js');
+  } else if (warned > 0) {
+    out('\n TOKEN SHIELD: DEGRADED — L2/L3 only, L1 is not operating.');
+    out(' Tool output is NOT sandboxed to SQLite; it stays in context.');
+    out(' Re-enable L1: set enabledPlugins["' + CONTEXT_MODE_PLUGIN_KEY + '"] = true in settings.json.');
+    out(' If L1 was retired deliberately, drop the context-mode entry from .mcp.json so this stops warning.');
+  } else {
+    out('\n TOKEN SHIELD: ALL CHECKS PASSED');
+  }
 
   return { checks, passed, failed, warned };
 }
