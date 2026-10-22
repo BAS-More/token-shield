@@ -19,22 +19,8 @@ function snapshot(dir) {
 }
 
 function runInstaller(home, args) {
-  const cli = path.resolve(__dirname, '../bin/install.js');
-  return spawnSync(
-    process.execPath,
-    [
-      '-e',
-      `
-    require('node:os').homedir = () => process.env.TOKEN_SHIELD_TEST_HOME;
-    require('node:child_process').execFileSync = () => {
-      throw new Error('dry-run must not launch subprocesses');
-    };
-    process.argv = [process.execPath, ${JSON.stringify(cli)}, ...${JSON.stringify(args)}];
-    require(${JSON.stringify(cli)});
-  `,
-    ],
-    { encoding: 'utf8', cwd: home, env: { ...process.env, TOKEN_SHIELD_TEST_HOME: home } }
-  );
+  const fixture = path.join(__dirname, 'helpers', 'install-fixture.js');
+  return spawnSync(process.execPath, [fixture, home, ...args], { encoding: 'utf8', cwd: home });
 }
 
 for (const existingConfig of [false, true]) {
