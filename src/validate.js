@@ -57,7 +57,10 @@ function runValidation(options = {}) {
       const cmd = typeof cm.command === 'string' ? cm.command : '';
       const wrapped = /(?:^|[\\/])cmd(?:\.exe)?$/i.test(cmd);
       const target = wrapped
-        ? Array.isArray(cm.args) && /^\/c$/i.test(cm.args[0]) && typeof cm.args[1] === 'string'
+        ? Array.isArray(cm.args) &&
+          typeof cm.args[0] === 'string' &&
+          /^\/c$/i.test(cm.args[0]) &&
+          typeof cm.args[1] === 'string'
           ? cm.args[1]
           : ''
         : cmd;
