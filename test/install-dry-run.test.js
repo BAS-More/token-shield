@@ -11,10 +11,12 @@ function snapshot(dir) {
     .sort()
     .map((name) => {
       const entry = path.join(dir, name);
-      return [
-        name,
-        fs.statSync(entry).isDirectory() ? snapshot(entry) : fs.readFileSync(entry, 'utf8'),
-      ];
+      try {
+        return [name, fs.readFileSync(entry, 'utf8')];
+      } catch (error) {
+        if (error.code !== 'EISDIR') throw error;
+        return [name, snapshot(entry)];
+      }
     });
 }
 
