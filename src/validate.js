@@ -55,7 +55,21 @@ function runValidation(options = {}) {
     if (cm) {
       record(cm.env?.CONTEXT_MODE_DB ? 'pass' : 'fail', 'DB path configured');
       const cmd = typeof cm.command === 'string' ? cm.command : '';
-      record(cmd && fs.existsSync(cmd) ? 'pass' : 'fail', `Binary exists: ${cmd || '(none)'}`);
+      const wrapped = /(?:^|[\\/])cmd(?:\.exe)?$/i.test(cmd);
+      const target = wrapped
+        ? Array.isArray(cm.args) && /^\/c$/i.test(cm.args[0]) && typeof cm.args[1] === 'string'
+          ? cm.args[1]
+          : ''
+        : cmd;
+      // Inspect the executable behind cmd /c; never execute a command to validate it.
+      const expanded = target.replace(/%([^%]+)%/g, (match, name) => {
+        const value = cm.env?.[name] ?? process.env[name];
+        return typeof value === 'string' ? value : match;
+      });
+      record(
+        expanded && fs.existsSync(expanded) ? 'pass' : 'fail',
+        `Binary exists: ${wrapped ? `${cmd} /c ${target}` : cmd || '(none)'}`
+      );
     }
   }
   out('');
