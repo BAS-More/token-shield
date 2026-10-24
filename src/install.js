@@ -39,9 +39,20 @@ function install(options = {}) {
 
   console.log('\n=== Token Shield Installer ===\n');
 
-  if (dryRun) colors.log('DRY RUN — no changes will be made\n');
   if (verifyOnly) {
     return { ok: runValidation().failed === 0 };
+  }
+  if (dryRun) {
+    colors.log('DRY RUN — no changes will be made\n');
+    if (!fs.existsSync(HOOK_SRC)) throw new Error(`missing hook source at ${HOOK_SRC}`);
+    colors.log(`Would ensure ${CLAUDE_DIR} and ${HOOKS_DIR}`);
+    colors.log(`Would copy ${HOOK_SRC} to ${HOOK_TARGET}`);
+    if (skipNpm) colors.skip('npm install skipped (--skip-npm)');
+    else colors.log('Would install context-mode globally if missing');
+    colors.log(`Would configure context-mode in ${MCP_JSON}, preserving existing servers`);
+    colors.log(`Would wire SessionStart and Stop hooks in ${SETTINGS_JSON}`);
+    colors.log('Installation validation is deferred until changes are applied');
+    return { ok: true };
   }
 
   ensureDir(CLAUDE_DIR, dryRun);

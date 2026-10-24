@@ -70,7 +70,11 @@ that has a clear extraction path later if we ship a multi-file layout).
 5. Load `settings.json`. Add the hook entry to `SessionStart` and `Stop` stages if not already wired. Back up and write atomically. If the file is invalid JSON, abort — do not overwrite.
 6. Run the validator.
 
-`--dry-run` skips every write. `--verify` runs only step 6.
+`--dry-run` prints the intended steps without reading user configuration,
+launching subprocesses or writing files. It checks the packaged hook source,
+then defers installation validation until the changes are applied. This keeps
+an uninstalled environment and invalid existing JSON safe to preview.
+`--verify` runs only step 6 and takes precedence if both flags are supplied.
 
 ## Hook flow
 
